@@ -32,6 +32,7 @@ import (
 	"tailscale.com/derp"
 	"tailscale.com/derp/derphttp"
 	"tailscale.com/metrics"
+	"tailscale.com/net/ktimeout"
 	"tailscale.com/net/stunserver"
 	"tailscale.com/tsweb"
 	"tailscale.com/types/key"
@@ -216,6 +217,15 @@ func main() {
 	}))
 	debug.Handle("traffic", "Traffic check", http.HandlerFunc(s.ServeDebugTraffic))
 
+	// Longer lived DERP connections send an application layer keepalive.
+	// Note if the keepalive is hit, the user timeout will take precedence over
+	// keepcnt, so the probe if unanswered will take effect promptly, this is
+	// less tolerant of high loss, but high loss is unexpected.
+	lc := net.ListenConfig{
+		Control:   ktimeout.UserTimeout(10 * time.Second),
+		KeepAlive: 10 * time.Minute,
+	}
+
 	quietLogger := log.New(logFilter{}, "", 0)
 	httpsrv := &http.Server{
 		Addr:     *addr,
@@ -292,7 +302,12 @@ func main() {
 					// duration exceeds server's WriteTimeout".
 					WriteTimeout: 5 * time.Minute,
 				}
-				err := port80srv.ListenAndServe()
+				l, err := lc.Listen(context.Background(), "tcp", port80srv.Addr)
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer l.Close()
+				err = port80srv.Serve(l)
 				if err != nil {
 					if err != http.ErrServerClosed {
 						log.Fatal(err)
@@ -303,7 +318,12 @@ func main() {
 		err = rateLimitedListenAndServeTLS(httpsrv)
 	} else {
 		log.Printf("derper: serving on %s", *addr)
-		err = httpsrv.ListenAndServe()
+		var l net.Listener
+		l, err = lc.Listen(context.Background(), "tcp", httpsrv.Addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = httpsrv.Serve(l)
 	}
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("derper: %v", err)
