@@ -259,12 +259,11 @@ const (
 	// New caps can be added, but existing ones should not be changed,
 	// as these exact values are used by users in tailnet policy files.
 
-	capFeatureAll      capFeature = "*"        // grants peer management of all features
-	capFeatureFunnel   capFeature = "funnel"   // grants peer serve/funnel management
-	capFeatureSSH      capFeature = "ssh"      // grants peer SSH server management
-	capFeatureSubnet   capFeature = "subnet"   // grants peer subnet routes management
-	capFeatureExitNode capFeature = "exitnode" // grants peer ability to advertise-as and use exit nodes
-	capFeatureAccount  capFeature = "account"  // grants peer ability to turn on auto updates and log out of node
+	capFeatureAll      capFeature = "*"         // grants peer management of all features
+	capFeatureSSH      capFeature = "ssh"       // grants peer SSH server management
+	capFeatureSubnet   capFeature = "subnets"   // grants peer subnet routes management
+	capFeatureExitNode capFeature = "exitnodes" // grants peer ability to advertise-as and use exit nodes
+	capFeatureAccount  capFeature = "account"   // grants peer ability to turn on auto updates and log out of node
 )
 
 type capRule struct {
@@ -275,6 +274,12 @@ type capRule struct {
 // given whois response.
 func toPeerCapabilities(status *ipnstate.Status, whois *apitype.WhoIsResponse) (peerCapabilities, error) {
 	if whois == nil {
+		return peerCapabilities{}, nil
+	}
+	if whois.Node.IsTagged() {
+		// We don't allow management *from* tagged nodes, so ignore caps.
+		// The web client auth flow relies on having a true user identity
+		// that can be verified through login.
 		return peerCapabilities{}, nil
 	}
 

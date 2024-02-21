@@ -622,7 +622,7 @@ func TestServeAuth(t *testing.T) {
 			name:          "no-session",
 			path:          "/api/auth",
 			wantStatus:    http.StatusOK,
-			wantResp:      &authResponse{AuthNeeded: tailscaleAuth, ViewerIdentity: vi, ServerMode: ManageServerMode},
+			wantResp:      &authResponse{ViewerIdentity: vi, ServerMode: ManageServerMode},
 			wantNewCookie: false,
 			wantSession:   nil,
 		},
@@ -647,7 +647,7 @@ func TestServeAuth(t *testing.T) {
 			path:       "/api/auth",
 			cookie:     successCookie,
 			wantStatus: http.StatusOK,
-			wantResp:   &authResponse{AuthNeeded: tailscaleAuth, ViewerIdentity: vi, ServerMode: ManageServerMode},
+			wantResp:   &authResponse{ViewerIdentity: vi, ServerMode: ManageServerMode},
 			wantSession: &browserSession{
 				ID:            successCookie,
 				SrcNode:       remoteNode.Node.ID,
@@ -695,7 +695,7 @@ func TestServeAuth(t *testing.T) {
 			path:       "/api/auth",
 			cookie:     successCookie,
 			wantStatus: http.StatusOK,
-			wantResp:   &authResponse{CanManageNode: true, ViewerIdentity: vi, ServerMode: ManageServerMode},
+			wantResp:   &authResponse{Authorized: true, ViewerIdentity: vi, ServerMode: ManageServerMode},
 			wantSession: &browserSession{
 				ID:            successCookie,
 				SrcNode:       remoteNode.Node.ID,
@@ -1348,7 +1348,6 @@ func TestPeerCapabilities(t *testing.T) {
 			caps: nil,
 			wantCanEdit: map[capFeature]bool{
 				capFeatureAll:      false,
-				capFeatureFunnel:   false,
 				capFeatureSSH:      false,
 				capFeatureSubnet:   false,
 				capFeatureExitNode: false,
@@ -1360,7 +1359,6 @@ func TestPeerCapabilities(t *testing.T) {
 			caps: peerCapabilities{capFeatureSSH: true, capFeatureAccount: true},
 			wantCanEdit: map[capFeature]bool{
 				capFeatureAll:      false,
-				capFeatureFunnel:   false,
 				capFeatureSSH:      true,
 				capFeatureSubnet:   false,
 				capFeatureExitNode: false,
@@ -1372,7 +1370,6 @@ func TestPeerCapabilities(t *testing.T) {
 			caps: peerCapabilities{capFeatureAll: true, capFeatureAccount: true},
 			wantCanEdit: map[capFeature]bool{
 				capFeatureAll:      true,
-				capFeatureFunnel:   true,
 				capFeatureSSH:      true,
 				capFeatureSubnet:   true,
 				capFeatureExitNode: true,
